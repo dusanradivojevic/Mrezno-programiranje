@@ -50,8 +50,7 @@ public class TCPKlijent{
 				clientMsg = unosSaTastature.readLine();
 				if(clientMsg.equals("*quit"))
 					break;
-				porukaZaServer.println(clientMsg);		
-				
+				porukaZaServer.println(clientMsg);				
 			}
 			
 			soketZaKomunikacijuSaServerom.close();

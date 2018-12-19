@@ -1,29 +1,24 @@
 package handler;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.net.SocketException;
 import java.util.Random;
-import java.util.concurrent.TimeUnit;
 
 /*
- * regulacija da na svakoj tacki procesa korisnik moze da unese *quit
- * i prekine konekciju bez greski
+ * hvatanje iznenadnih prekida konekcije
  * 
- * PISI OPET KALKULATOR FJU UZ:
- * 		neogranicen broj kalkulacija za prijavljene korisnike
- * 		maksimum 3 kalkulacije za goste 
- * 		cuvanje liste kalkulacija
- * 
- * slanje iste
- * 
- * ubaci na git
+ * slanje kalkulacije (izmenjenog fajla (bez sifre i username i promenjeno ime fajla))
  *  
  */
 
@@ -72,8 +67,6 @@ public class ClientHandler extends Thread {
 
 			porukaZaKlijenta.println(">>Dobrodosli, uspesno ste se povezali na server!");
 //			porukaZaKlijenta.println("%%%");  // oznaka da klijent prestane sa slusanjem
-
-// 	socketexception
 
 			prikaziMeni();
 
@@ -145,11 +138,11 @@ public class ClientHandler extends Thread {
 			do {
 				porukaZaKlijenta.println(">>Unesite korisnicko ime:");
 				porukaZaKlijenta.println("%%%");
-				username = porukaOdKlijenta.readLine();
+				username = porukaOdKlijenta.readLine();	
 
 				porukaZaKlijenta.println(">>Unesite lozinku:");
 				porukaZaKlijenta.println("%%%");
-				password = porukaOdKlijenta.readLine();
+				password = porukaOdKlijenta.readLine();		
 
 				try {
 					BufferedReader reader = new BufferedReader(new FileReader("Korisnici\\" + username + ".txt"));
@@ -167,8 +160,6 @@ public class ClientHandler extends Thread {
 
 			} while (!checker);
 
-			if (username.equals("*quit") || password.equals("*quit"))
-				quit(1);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -184,7 +175,7 @@ public class ClientHandler extends Thread {
 				porukaZaKlijenta.println(">>Unesite vase korisnicko ime:");
 				porukaZaKlijenta.println("%%%");
 				username = porukaOdKlijenta.readLine();
-
+				
 				putanjaDoFajla = postojiUsername(username);
 
 				if (putanjaDoFajla == null) {
@@ -209,8 +200,6 @@ public class ClientHandler extends Thread {
 					porukaZaKlijenta.println(">>Neispravna lozinka! Pokusajte ponovo.");
 
 			} while (!checker);
-
-			// upisi password u fajl
 
 			PrintWriter writer = new PrintWriter(putanjaDoFajla, "UTF-8");
 			writer.println(password);
@@ -249,7 +238,6 @@ public class ClientHandler extends Thread {
 	    
 	    return false;
 	}
-
 //////////////////////////////////////////////////////////////////////////////////////////
 	private String postojiUsername(String u) {
 		File file = new File("Korisnici\\" + u + ".txt");
@@ -279,8 +267,7 @@ public class ClientHandler extends Thread {
 //////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
 	private void quit(int exitCode) throws SocketException { // exitCode == 2 oznacava da je pukla konekcija
-		//?dodaj da dobija string kalkulacije i da pre zatvaranja konekcije upise u fajl korisnika 
-
+		
 		if (exitCode == 2) {
 			try {
 				// dodaj posaljiIzvestaj() da bi se sacuvao poslednji zahtev
@@ -297,6 +284,7 @@ public class ClientHandler extends Thread {
 		}
 
 		porukaZaKlijenta.println(">>Dovidjenja " + username + "!");
+		System.out.println("Napisao dovidjenja");
 
 		try {
 			soketZaKomunikaciju.close();
@@ -338,7 +326,7 @@ public class ClientHandler extends Thread {
 				break; // i/ili drugi nacin prekida
 			}
 
-			if (iterator != 0) {
+			if (iterator != 0 && sign == 3) {
 				porukaZaKlijenta.println(">>Broj preostalih kalkulacija: " + (ogranicenje - iterator) + ".");
 			}
 
@@ -405,6 +393,10 @@ public class ClientHandler extends Thread {
 				break;			
 		}
 		
+		if(sign != 3) {
+			upisiKalkulacije(kalkulacije);
+		}
+		
 		quit(1);
 	}
 
@@ -463,6 +455,34 @@ public class ClientHandler extends Thread {
 		return oznakaDuzine && oznakaParsera && oznakaOperacije;
 	}
 
+//////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////
+	private void upisiKalkulacije(String kalkulacije) {		
+		String putanjaDoFajla = "Korisnici\\"+username+".txt";
+		String[] pom = kalkulacije.split("\n");
+		int d = pom.length;
+		
+		try {
+			PrintWriter	writer = new PrintWriter(new BufferedWriter(new FileWriter(putanjaDoFajla, true)));
+			
+			for(int i = 0; i < d; i++) {
+				if (!pom[i].equals("") && !pom[i].equals(" ") && !(pom[i] == null))
+					writer.println(pom[i]);
+			}
+			
+			writer.close();
+			
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}		
+	}
 //////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
 	private void posaljiIzvestaj() {
