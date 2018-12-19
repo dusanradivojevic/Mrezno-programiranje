@@ -24,8 +24,6 @@ public class TCPKlijent{
 			unosSaTastature = new BufferedReader(new InputStreamReader(System.in));
 			
 			System.out.println("Uspostavljena konekcija sa serverom!");
-		
-//			new TCPKlijent().start();
 						
 			String serverMsg;
 			String clientMsg;
@@ -35,7 +33,7 @@ public class TCPKlijent{
 				while(true) {
 					serverMsg = porukaOdServera.readLine();
 					
-					if(serverMsg.startsWith(">>Dovidjenja")) {
+					if(serverMsg.startsWith(">>Dovidjenja")) {						
 						break;
 					}
 					
@@ -64,36 +62,5 @@ public class TCPKlijent{
 		
 		
 	}
-/*
-	@Override
-	public void run() {
-		porukeKaServeru();
-	}
-		
-	private void porukeKaServeru() {
-		
-		try {
-			String message;
-			
-			while(true) {
-				
-				if(!flag)
-					break;
-				
-				message = unosSaTastature.readLine();
-				porukaZaServer.println(message);
-				
-				if(message.startsWith("***quit")) { //da li ovo treba da ostane i ako da dodati ga u server deo kao obavestenje za korisnike bar
-					flag = false;
-					break; 
-				}				
-			}
-			
-			soketZaKomunikacijuSaServerom.close();
-			
-		} catch (IOException e) {
-			System.out.println("...");
-		}
-	}
-*/
+
 }

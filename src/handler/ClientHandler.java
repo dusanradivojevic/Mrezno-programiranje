@@ -1,26 +1,27 @@
 package handler;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 /*
- * obrada gresaka pri losem unosu formata jednacina * 
- * provera svih situacija nasilnog prekida (*quit) - resavanje pravljenjem fje za proveru nasilnog 
- * *** izlaza i pozivanje iste kod svakog citanja korisnicke poruke
- * *** ili obrada svakog exeptiona prilikom nasilnog izlaza
- *
+ * regulacija da na svakoj tacki procesa korisnik moze da unese *quit
+ * i prekine konekciju bez greski
  * 
- * registracija
+ * PISI OPET KALKULATOR FJU UZ:
+ * 		neogranicen broj kalkulacija za prijavljene korisnike
+ * 		maksimum 3 kalkulacije za goste 
+ * 		cuvanje liste kalkulacija
  * 
- * neogranicen broj kalkulacija za prijavljene korisnike
- * maksimum 3 kalkulacije za goste
- * 
- * cuvanje zahteva kalkulacija
- * 
+ * slanje iste
  * 
  * ubaci na git
  *  
@@ -42,33 +43,58 @@ public class ClientHandler extends Thread {
 
 	@Override
 	public void run() {
-
-		komuniciraj();
 		
+		try {
+			
+			komuniciraj();		
+		
+		} catch (SocketException se) {			
+			
+			try {
+				quit(2);
+			} catch (SocketException e) {
+				// exitCode == 2 sprecava ovaj exception
+				e.printStackTrace();
+			}
+		}
 	}
 
-	private void komuniciraj() {
+	private void komuniciraj() throws SocketException{
 
 		try {
 			porukaOdKlijenta = new BufferedReader(new InputStreamReader(soketZaKomunikaciju.getInputStream()));
 			porukaZaKlijenta = new PrintStream(soketZaKomunikaciju.getOutputStream());
 
+		
+	/*	
+		try {
+			TimeUnit.SECONDS.sleep(5);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	*/
+			
 			porukaZaKlijenta.println(">>Dobrodosli, uspesno ste se povezali na server!");
 //			porukaZaKlijenta.println("%%%");  // oznaka da klijent prestane sa slusanjem
-
+			
+// 	socketexception
+			
 			prikaziMeni();		
-
-			porukaZaKlijenta.println(">>Zdravo, "+username+"!"); 
-
+		
+			porukaZaKlijenta.println(">>Zdravo "+username+", uspesno ste se povezali na server!"); 
+		
 			kalkulator(sign);
 
-		} catch (Exception e) {
+		} catch (IOException e) {
+			
 			System.out.println(e.getMessage());
 		}
 
 	}
-
-	private void prikaziMeni() {
+//////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////
+	private void prikaziMeni() throws SocketException {
 		porukaZaKlijenta.println(">>Izaberite jednu od sledecih opcija:");
 		porukaZaKlijenta.println(">>1 Prijavljivanje\n>>2 Registracija\n>>3 Gost\n>>4 Izlaz\n\n");
 		porukaZaKlijenta.println(">>Prijavite se ako zelite da koristite sve nase usluge.\n"
@@ -82,7 +108,7 @@ public class ClientHandler extends Thread {
 		do {
 			try {
 				izbor = Integer.parseInt(porukaOdKlijenta.readLine());
-			} catch (Exception e) {
+			} catch (NumberFormatException | IOException e) {
 				e.printStackTrace();
 				break;
 			}
@@ -97,7 +123,7 @@ public class ClientHandler extends Thread {
 		} while (!provera);
 
 		if(sign == -1)
-			sign = izbor;
+			sign = izbor; //proveri da ne sme da dobije sign ako se neuspesno loguje
 		
 		switch (izbor) {
 		case 1:
@@ -110,125 +136,318 @@ public class ClientHandler extends Thread {
 			guest();
 			break;
 		case 4:
-			quit();
+			quit(1);
 			break;
 		}		
 	}
-
-	private void login() {
+//////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////
+	private void login() throws SocketException {
 		try {
-			porukaZaKlijenta.println(">>Unesite vas username:");
-			porukaZaKlijenta.println("%%%"); 
-			username = porukaOdKlijenta.readLine();
-
-			porukaZaKlijenta.println(">>Unesite vas password:");
-			porukaZaKlijenta.println("%%%"); 
-			password = porukaOdKlijenta.readLine();
-
-			// proveri da li postoji takav korisnik u bazi (otvara fajl sa tim usernamom, ako ga ne otvori znaci nema korisnika u bazi)
-
-			// ako prodje onda je njegov znak 1 tako i za ostale tipove korisnika
+			boolean checker = false;
+			do {
+				porukaZaKlijenta.println(">>Unesite korisnicko ime:");
+				porukaZaKlijenta.println("%%%"); 
+				username = porukaOdKlijenta.readLine();
+	
+				porukaZaKlijenta.println(">>Unesite lozinku:");
+				porukaZaKlijenta.println("%%%"); 
+				password = porukaOdKlijenta.readLine();
+			
+				try {
+					BufferedReader reader = new BufferedReader(new FileReader("Korisnici\\"+username+".txt")); 
+					String pom = reader.readLine();
+					reader.close();
+					
+					if(pom.equals(password)) {
+						checker = true;
+					} else {
+						porukaZaKlijenta.println(">>Neispravno korisnicko ime ili lozinka, pokusajte ponovo.");
+					}
+				} catch (IOException e) {
+					porukaZaKlijenta.println(">>Neispravno korisnicko ime ili lozinka, pokusajte ponovo.");
+				}
+				
+			}while(!checker);
 
 			if(username.equals("*quit")||password.equals("*quit"))
-				quit();
+				quit(1);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 
 	}
-
-	private void registration() {
+//////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////
+	private void registration() throws SocketException {
+		String putanjaDoFajla = null;
 		try {
-			porukaZaKlijenta.println(">>Unesite vas username:");
-			porukaZaKlijenta.println("%%%"); 
-			username = porukaOdKlijenta.readLine();
-			// provera da ne postoji vec korisnik sa istim usernamom
+			do {
+				porukaZaKlijenta.println(">>Unesite vase korisnicko ime:");
+				porukaZaKlijenta.println("%%%"); 
+				username = porukaOdKlijenta.readLine();
+				
+				putanjaDoFajla = postojiUsername(username);
+				
+				if(putanjaDoFajla == null) {
+					porukaZaKlijenta.println(">>Postoji korisnik sa tim korisnickim imenom! Pokusajte ponovo.");
+				} else
+					break;
+				
+			}while(true);
 
-			porukaZaKlijenta.println(">>Unesite vas password:");
-			porukaZaKlijenta.println("%%%"); 
-			password = porukaOdKlijenta.readLine();
+			boolean checker = false;
+			do {
+				porukaZaKlijenta.println(">>Unesite vasu lozinku:\n>>Napomena:"
+						+ " lozinka se mora sastojati iz minimum 8 karaktera, "
+						+ "minimum jednog velikog slova" + 
+						"(A-Z) i minimum jednog broja (0-9)");
+				porukaZaKlijenta.println("%%%"); 
+				
+				password = porukaOdKlijenta.readLine();
+				
+				checker = checkPassword(password);
+				
+				if(!checker)
+					porukaZaKlijenta.println(">>Neispravna lozinka! Pokusajte ponovo.");				
 
-			// kreira fajl ciji je naziv username klijenta i upisuje u prvi red password
-			// (ili u sklopu naziva fajla)
-			// taj fajl se dalje koristi za upisivanje zahteva koje je korisnik upucivao
+			}while(!checker);
+			
+			//upisi password u fajl
+			
+			PrintWriter writer = new PrintWriter(putanjaDoFajla, "UTF-8");
+			writer.println(password);
+			writer.close();
 
 			porukaZaKlijenta.println(">>Uspesno ste se registrovali!\n");
-			porukaZaKlijenta.println("%%%"); 
 
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
+//////////////////////////////////////////////////////////////////////////////////////////	
+	private boolean checkPassword(String pw) {
+	    char ch;
+	    boolean velikoSlovo = false;
+	    boolean numberFlag = false;
+	    
+	    if (pw.length() <= 8)
+	    	return false;
+	    
+	    for(int i=0; i < pw.length(); i++) {
+	        ch = pw.charAt(i);
+	        
+	        if(Character.isDigit(ch)) {
+	            numberFlag = true;
+	        }
+	        else if(Character.isUpperCase(ch)) {
+	        	velikoSlovo = true;
+	        } 
+	        
+	        if(numberFlag && velikoSlovo)
+	            return true;
+	    }
+	    
+	    return false;
+	}
+//////////////////////////////////////////////////////////////////////////////////////////
+	private String postojiUsername(String u) {
+		File file = new File("Korisnici\\"+u+".txt");
+		
+		try {
+			if(file.createNewFile()) {
+				return file.getAbsolutePath();
+			} else {
+				return null;
+			}
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return null;
+	}
 
+//////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////
 	private void guest() {
 		Random rand = new Random();
 		int n = rand.nextInt(9999999) + 1000000;
 		username = "Gost_" + n;
 	}
-
-	private void quit() {
+//////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////
+	private void quit(int exitCode) throws SocketException { // exitCode == 2 oznacava da je pukla konekcija
+		
+		if (exitCode == 2) {
+			try {
+				// dodaj posaljiIzvestaj() da bi se sacuvao poslednji zahtev
+				// to takodje uradi svuda gde moze da dodje do gubljenja podataka
+				// (eventualno stavi samo gde hvatas socketexception)
+				soketZaKomunikaciju.close();	
+				
+			} catch (IOException e) {
+				System.out.println("Greska u funckiji quit() pri zatvaranju soketa za komunikaciju sa klijentom.");
+				e.printStackTrace();
+			}
+			
+			return;
+		}
+		
 		porukaZaKlijenta.println(">>Dovidjenja " + username + "!");
 		porukaZaKlijenta.println("%%%");
+					
 		try {
-			soketZaKomunikaciju.close();
+			soketZaKomunikaciju.close();	
+			
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
+			System.out.println("Greska u funckiji quit() pri zatvaranju soketa za komunikaciju sa klijentom.");
 			e.printStackTrace();
 		}
 	}
-
-	private void kalkulator(int sign) {
+//////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////
+	private void kalkulator(int sign) throws SocketException {
 		String jednacina = null;
 		double br1 = 0;
 		double br2 = 0;
-		char znak;
+		char znak = 'z'; //zbog default grane switcha
+		int ogranicenje = Integer.MAX_VALUE;
+		int iterator = 0;
+		boolean oznakaIzlaza = false;
+		
+		if(sign == 3 && iterator == 0) {
+			porukaZaKlijenta.println(">>Kao gost imate pravo na 3 kalkulacije.");
+			ogranicenje = 3;
+		}
+		else if (sign == 1 || sign == 2) {
+			porukaZaKlijenta.println(">>Kao registrovani korisnik imate pravo na neogranicen broj kalkulacija.");
+		}
+		else
+			System.out.println("Doslo je do greske.");
 
-		try {
-			porukaZaKlijenta.println(">>Unesite zeljenu jednacinu u sledecem formatu: broj1 znak_operacije broj2\n");
-			porukaZaKlijenta.println("%%%");
-			jednacina = porukaOdKlijenta.readLine();
-
-			String[] pom = jednacina.split(" ");
-			br1 = Double.parseDouble(pom[0]);
-			br2 = Double.parseDouble(pom[2]);
-			znak = pom[1].charAt(0);
-
-			double r = -1;
-
-			switch (znak) {
-			case '+':
-				r = br1 + br2;
-				porukaZaKlijenta.println(">>Rezultat je: " + r);
-				break;
-			case '-':
-				r = br1 - br2;
-				porukaZaKlijenta.println(">>Rezultat je: " + r);
-				break;
-			case '*':
-				r = br1 * br2;
-				porukaZaKlijenta.println(">>Rezultat je: " + r);
-				break;
-			case '/':
-				if (br2 != 0) {
-					r = br1 / br2;
+		while(!oznakaIzlaza) {
+			try {				
+				if(iterator == ogranicenje) {
+					porukaZaKlijenta.println(">>Kao gost nemate pravo na dodatne kalkulacije.");
+					break;
+				} else if(sign == 3) {
+					porukaZaKlijenta.println(">>Mozete izvrsiti jos " + (ogranicenje-iterator) + " kalkulacije.");
+				}
+				
+				porukaZaKlijenta.println("\n>>Unesite zeljenu jednacinu u sledecem formatu: broj1 znak_operacije broj2\n");
+				porukaZaKlijenta.println("%%%");
+				jednacina = porukaOdKlijenta.readLine();
+	
+				boolean checker = false; //provera formata zahteva
+				do {				
+					String[] pom = jednacina.split(" ");
+					
+					if (pom.length == 3)
+						checker = true;
+					else {
+						porukaZaKlijenta.println(">>Format zahteva nije odgovarajuci, pokusajte ponovo.");
+						porukaZaKlijenta.println("%%%");
+						jednacina = porukaOdKlijenta.readLine();
+						continue;
+					}
+						
+					try {
+						br1 = Double.parseDouble(pom[0]);
+						br2 = Double.parseDouble(pom[2]);
+						znak = pom[1].charAt(0);
+					} catch (Exception e) {
+						checker = false;
+						
+						porukaZaKlijenta.println(">>Format zahteva nije odgovarajuci, pokusajte ponovo.");
+						porukaZaKlijenta.println("%%%");
+						jednacina = porukaOdKlijenta.readLine();
+					}				
+				} while(!checker);			
+	
+				double r = -1;
+	
+				switch (znak) {
+				case '+':
+					r = br1 + br2;
 					porukaZaKlijenta.println(">>Rezultat je: " + r);
 					break;
-				} else {
-					porukaZaKlijenta.println("Ne mozemo deliti s nulom");
+				case '-':
+					r = br1 - br2;
+					porukaZaKlijenta.println(">>Rezultat je: " + r);
 					break;
-				} //ako u fajl treba da se pored zahteva pamte i rezultati ovo treba izmeniti
+				case '*':
+					r = br1 * br2;
+					porukaZaKlijenta.println(">>Rezultat je: " + r);
+					break;
+				case '/':
+					if (br2 != 0) {
+						r = br1 / br2;
+						porukaZaKlijenta.println(">>Rezultat je: " + r);
+						break;
+					} else {
+						porukaZaKlijenta.println("Ne moze se deliti nulom.");
+						break;
+					} //ako u fajl treba da se pored zahteva pamte i rezultati ovo treba izmeniti
+					default: porukaZaKlijenta.println(">>Doslo je do greske, pokusajte ponovo.");
+					continue; 
+				}
+	
+				//ako zeli jos da racuna ili da trazi izvestaj da mu da izbor
+				
+				boolean provera2 = false; //provera vrste korisnika
+						
+				while(!provera2) {
+					porukaZaKlijenta.println(">>Ako zelite da racunate ponovo, unesite 1,\n"
+							+ ">>Ako zelite listu vasih kalkulacija unesite 2 (samo za registrovane korisnike),\n"
+							+ ">>Za izlaz unesite bilo sta.");
+					porukaZaKlijenta.println("%%%");
+				
+					
+					int izbor;
+					try {
+						izbor = Integer.parseInt(porukaOdKlijenta.readLine());
+					} catch (NumberFormatException e) {
+						izbor = 101;
+					}				
+					
+					
+					if(izbor == 1) {
+						iterator++;
+//						kalkulator(sign);
+						oznakaIzlaza = false;
+						provera2 = true;
+					}
+					else if(izbor == 2) {
+						if (sign == 3) {
+							porukaZaKlijenta.println(">>Ova opcija je moguca samo za registrovane korisnike.");
+							provera2 = false;
+						}
+						else {
+							posaljiIzvestaj(); //implementirati
+							provera2 = true;
+							oznakaIzlaza = true;
+						}
+					} else {
+						System.out.println("Usao je u else granu");
+						oznakaIzlaza = true;
+					}
+				}						
+	
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
-
-			//ako zeli jos da racuna ili da trazi izvestaj da mu da izbor
-			
-			porukaZaKlijenta.println(">>KRAJ!");
-			quit();			
-
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		}
-
+		
+		quit(1);
+	}
+//////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////
+	private void posaljiIzvestaj() {
+		//izmeni ime fajla u izvestaj, izbrisi sifru iz prvog reda i posalji onda, a nakon 
+		//slanja vrati sve kako je bilo
+		
 	}
 }
