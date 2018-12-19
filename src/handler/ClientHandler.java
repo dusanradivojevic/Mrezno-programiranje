@@ -230,7 +230,7 @@ public class ClientHandler extends Thread {
 	private boolean checkPassword(String pw) {
 	    char ch;
 	    boolean velikoSlovo = false;
-	    boolean numberFlag = false;
+	    boolean broj = false;
 	    
 	    if (pw.length() <= 8)
 	    	return false;
@@ -239,13 +239,13 @@ public class ClientHandler extends Thread {
 	        ch = pw.charAt(i);
 	        
 	        if(Character.isDigit(ch)) {
-	            numberFlag = true;
+	        	broj = true;
 	        }
 	        else if(Character.isUpperCase(ch)) {
 	        	velikoSlovo = true;
 	        } 
 	        
-	        if(numberFlag && velikoSlovo)
+	        if(broj && velikoSlovo)
 	            return true;
 	    }
 	    
@@ -309,139 +309,157 @@ public class ClientHandler extends Thread {
 //////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
 	private void kalkulator(int sign) throws SocketException {
+		String kalkulacije = "";
 		String jednacina = null;
 		double br1 = 0;
 		double br2 = 0;
-		char znak = 'z'; //zbog default grane switcha
-		int ogranicenje = Integer.MAX_VALUE;
-		int iterator = 0;
-		boolean oznakaIzlaza = false;
+		char znak = 'z';
+		double rezultat = 0;
+		int ogranicenje;
+		int iterator = 0; // broj izvrsenih kalkulacija
+
+		int izbor = 0;
 		
-		if(sign == 3 && iterator == 0) {
-			porukaZaKlijenta.println(">>Kao gost imate pravo na 3 kalkulacije.");
+		if (sign == 3)
 			ogranicenje = 3;
-		}
-		else if (sign == 1 || sign == 2) {
+		else
+			ogranicenje = -1;
+
+		if (ogranicenje == 3) {
+			porukaZaKlijenta.println(">>Kao gost imate pravo na 3 kalkulacije.");
+		} else {
 			porukaZaKlijenta.println(">>Kao registrovani korisnik imate pravo na neogranicen broj kalkulacija.");
 		}
-		else
-			System.out.println("Doslo je do greske.");
 
-		while(!oznakaIzlaza) {
-			try {				
-				if(iterator == ogranicenje) {
-					porukaZaKlijenta.println(">>Kao gost nemate pravo na dodatne kalkulacije.");
-					break;
-				} else if(sign == 3) {
-					porukaZaKlijenta.println(">>Mozete izvrsiti jos " + (ogranicenje-iterator) + " kalkulacije.");
-				}
-				
-				porukaZaKlijenta.println("\n>>Unesite zeljenu jednacinu u sledecem formatu: broj1 znak_operacije broj2\n");
-				porukaZaKlijenta.println("%%%");
+		while (true) {
+			if (iterator == ogranicenje) {
+				porukaZaKlijenta.println(">>Kao gost nemate pravo na dodatne kalkulacije.");
+				break; // i/ili drugi nacin prekida
+			}
+
+			if (iterator != 0) {
+				porukaZaKlijenta.println(">>Broj preostalih kalkulacija: " + (ogranicenje - iterator) + ".");
+			}
+
+			porukaZaKlijenta.println("\n>>Unesite zeljenu jednacinu u sledecem formatu: broj1 znak_operacije broj2\n");
+			porukaZaKlijenta.println("%%%");
+			try {
 				jednacina = porukaOdKlijenta.readLine();
-	
-				boolean checker = false; //provera formata zahteva
-				do {				
-					String[] pom = jednacina.split(" ");
-					
-					if (pom.length == 3)
-						checker = true;
-					else {
-						porukaZaKlijenta.println(">>Format zahteva nije odgovarajuci, pokusajte ponovo.");
-						porukaZaKlijenta.println("%%%");
-						jednacina = porukaOdKlijenta.readLine();
-						continue;
-					}
-						
-					try {
-						br1 = Double.parseDouble(pom[0]);
-						br2 = Double.parseDouble(pom[2]);
-						znak = pom[1].charAt(0);
-					} catch (Exception e) {
-						checker = false;
-						
-						porukaZaKlijenta.println(">>Format zahteva nije odgovarajuci, pokusajte ponovo.");
-						porukaZaKlijenta.println("%%%");
-						jednacina = porukaOdKlijenta.readLine();
-					}				
-				} while(!checker);			
-	
-				double r = -1;
-	
-				switch (znak) {
-				case '+':
-					r = br1 + br2;
-					porukaZaKlijenta.println(">>Rezultat je: " + r);
-					break;
-				case '-':
-					r = br1 - br2;
-					porukaZaKlijenta.println(">>Rezultat je: " + r);
-					break;
-				case '*':
-					r = br1 * br2;
-					porukaZaKlijenta.println(">>Rezultat je: " + r);
-					break;
-				case '/':
-					if (br2 != 0) {
-						r = br1 / br2;
-						porukaZaKlijenta.println(">>Rezultat je: " + r);
-						break;
-					} else {
-						porukaZaKlijenta.println("Ne moze se deliti nulom.");
-						break;
-					} //ako u fajl treba da se pored zahteva pamte i rezultati ovo treba izmeniti
-					default: porukaZaKlijenta.println(">>Doslo je do greske, pokusajte ponovo.");
-					continue; 
-				}
-	
-				//ako zeli jos da racuna ili da trazi izvestaj da mu da izbor
-				
-				boolean provera2 = false; //provera vrste korisnika
-						
-				while(!provera2) {
-					porukaZaKlijenta.println(">>Ako zelite da racunate ponovo, unesite 1,\n"
-							+ ">>Ako zelite listu vasih kalkulacija unesite 2 (samo za registrovane korisnike),\n"
-							+ ">>Za izlaz unesite bilo sta.");
-					porukaZaKlijenta.println("%%%");
-				
-					
-					int izbor;
-					try {
-						izbor = Integer.parseInt(porukaOdKlijenta.readLine());
-					} catch (NumberFormatException e) {
-						izbor = 101;
-					}				
-					
-					
-					if(izbor == 1) {
-						iterator++;
-//						kalkulator(sign);
-						oznakaIzlaza = false;
-						provera2 = true;
-					}
-					else if(izbor == 2) {
-						if (sign == 3) {
-							porukaZaKlijenta.println(">>Ova opcija je moguca samo za registrovane korisnike.");
-							provera2 = false;
-						}
-						else {
-							posaljiIzvestaj(); //implementirati
-							provera2 = true;
-							oznakaIzlaza = true;
-						}
-					} else {
-						System.out.println("Usao je u else granu");
-						oznakaIzlaza = true;
-					}
-				}						
-	
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+
+			while (!proveraFormataJednacine(jednacina)) {
+				porukaZaKlijenta.println("\n>>Format zahteva nije odgovarajuci, pokusajte ponovo!");
+				porukaZaKlijenta.println("\n>>Unesite zeljenu jednacinu u sledecem formatu: broj1 znak_operacije broj2\n");
+				porukaZaKlijenta.println("%%%");
+				try {
+					jednacina = porukaOdKlijenta.readLine();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+
+			String[] pom = jednacina.split(" ");
+
+			br1 = Double.parseDouble(pom[0]);
+			br2 = Double.parseDouble(pom[2]);
+			znak = pom[1].charAt(0);
+			
+			rezultat = izracunaj(br1, znak, br2);
+			
+			porukaZaKlijenta.println(">>Rezultat je: " + rezultat);
+			
+			kalkulacije += "\n" + br1 + " " + znak + " " + br2 + " = " + rezultat;
+			
+			while(true) {
+				porukaZaKlijenta.println(">>Za novu kalkulaciju unesite 1,\n"
+						+ ">>Za izvestaj o kalkulacijama unesite 2,\n"
+						+ ">>Za prekid unesite bilo sta drugo.");
+				porukaZaKlijenta.println("%%%");
+			
+				try {
+					izbor = Integer.parseInt(porukaOdKlijenta.readLine());
+				} catch (NumberFormatException e) {
+					izbor = 0;
+				} catch (IOException e) {
+					izbor = 0;
+				}
+				
+				if(izbor == 2 && sign == 3) {
+					porukaZaKlijenta.println(">>Ova opcija je moguca samo za registrovane korisnike.");
+				} else {
+					break;
+				}
+			}
+			
+			iterator++;
+			
+			if (izbor == 2 && sign != 3) {
+				posaljiIzvestaj(); //dodaj String kalkulacije
+				break;
+			} else if (izbor != 1)
+				break;			
 		}
 		
 		quit(1);
+	}
+
+//////////////////////////////////////////////////////////////////////////////////////////
+	private double izracunaj(double a, char znak, double b) {
+		switch (znak) {
+		case '+':
+			return a + b;
+		case '-':
+			return a - b;
+		case '*':
+			return a * b;
+		case '/':
+			if(b != 0)
+				return a / b;
+			else {
+				porukaZaKlijenta.println("Ne moze se deliti nulom!");
+				return 0;
+			}
+		}
+		
+		return 0;
+	}
+
+//////////////////////////////////////////////////////////////////////////////////////////
+	private boolean proveraFormataJednacine(String jed) {
+		String[] pom = jed.split(" ");
+		boolean oznakaDuzine = false;
+		boolean oznakaParsera = false;
+		boolean oznakaOperacije = false;
+		double br1 = 0;
+		double br2 = 0;
+		char znak = 'z';
+
+		if (pom.length == 3)
+			oznakaDuzine = true;
+		else {
+			return false;
+		}
+
+		try {
+			br1 = Double.parseDouble(pom[0]);
+			br2 = Double.parseDouble(pom[2]);
+			znak = pom[1].charAt(0);
+
+			oznakaParsera = true;
+		} catch (Exception e) {
+			return false;
+		}
+
+		if (znak == '+' || znak == '-' || znak == '*' || znak == '/')
+			oznakaOperacije = true;
+		else
+			return false;
+
+		return oznakaDuzine && oznakaParsera && oznakaOperacije;
 	}
 //////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
