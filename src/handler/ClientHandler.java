@@ -85,7 +85,7 @@ public class ClientHandler extends Thread {
 //////////////////////////////////////////////////////////////////////////////////////////
 	private void prikaziMeni() throws SocketException {
 		porukaZaKlijenta.println(">>Izaberite jednu od sledecih opcija:");
-		porukaZaKlijenta.println(">>1 Prijavljivanje\n>>2 Registracija\n>>3 Gost\n>>4 Izlaz\n\n");
+		porukaZaKlijenta.println(">>1 Prijavljivanje\n>>2 Registracija\n>>3 Gost\n>>4 Izvestaj kalkulacija\n>>5 Izlaz\n");
 		porukaZaKlijenta.println(">>Prijavite se ako zelite da koristite sve nase usluge.\n"
 				+ "Ukoliko nemate nalog registrujte se ili koristite usluge servera kao gost.\n"
 				+ "Za prekid u bilo kom trenutku unesite *quit\n");
@@ -102,7 +102,7 @@ public class ClientHandler extends Thread {
 				break;
 			}
 
-			if (izbor >= 1 && izbor <= 4)
+			if (izbor >= 1 && izbor <= 5)
 				provera = true;
 			else {
 				porukaZaKlijenta.println(">>Pogresili ste, pokusajte ponovo!");
@@ -125,6 +125,10 @@ public class ClientHandler extends Thread {
 			guest();
 			break;
 		case 4:
+			login();
+			posaljiIzvestaj();
+			break;
+		case 5:
 			quit(1);
 			break;
 		}
@@ -157,13 +161,10 @@ public class ClientHandler extends Thread {
 				} catch (IOException e) {
 					porukaZaKlijenta.println(">>Neispravno korisnicko ime ili lozinka, pokusajte ponovo.");
 				}
-
 			} while (!checker);
-
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
 	}
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -387,13 +388,14 @@ public class ClientHandler extends Thread {
 			iterator++;
 			
 			if (izbor == 2 && sign != 3) {
+				upisiKalkulacije(kalkulacije);
 				posaljiIzvestaj(); //dodaj String kalkulacije
 				break;
 			} else if (izbor != 1)
 				break;			
 		}
 		
-		if(sign != 3) {
+		if(sign != 3 && izbor != 2) {
 			upisiKalkulacije(kalkulacije);
 		}
 		
