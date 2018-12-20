@@ -10,6 +10,7 @@ import java.io.PrintStream;
 import java.io.RandomAccessFile;
 import java.net.PortUnreachableException;
 import java.net.Socket;
+import java.net.SocketException;
 
 public class TCPKlijent{
 
@@ -93,15 +94,8 @@ public class TCPKlijent{
 			raf.close();
 			porukaZaServer.println("Fajl je primljen.");
 			
-		} catch (NumberFormatException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		} catch (Exception e) {
+			System.out.println("Doslo je do greske pri konekciji sa serverom!");
 		}
 	}
 

@@ -308,7 +308,7 @@ public class ClientHandler extends Thread {
 		}
 
 		porukaZaKlijenta.println(">>Dovidjenja " + username + "!");
-		System.out.println("Napisao dovidjenja");
+//		System.out.println("Napisao dovidjenja");
 
 		try {
 			soketZaKomunikaciju.close();
@@ -553,6 +553,8 @@ public class ClientHandler extends Thread {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IOException e) {
+			if (e instanceof SocketException)
+				quit(2);
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
@@ -599,8 +601,8 @@ public class ClientHandler extends Thread {
 		} catch (IOException e) {
 			if(e instanceof SocketException)
 				quit(2);
-			
-			e.printStackTrace();
+			else
+				e.printStackTrace();
 		}
 		
 		return null;
