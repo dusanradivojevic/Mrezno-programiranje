@@ -8,8 +8,10 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.io.RandomAccessFile;
 import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.net.SocketException;
@@ -44,11 +46,13 @@ public class ClientHandler extends Thread {
 			komuniciraj();
 
 		} catch (SocketException se) {
+			System.out.println("UHVACEN SOCKET EXCEPTION");
 
 			try {
 				quit(2);
 			} catch (SocketException e) {
 				// exitCode == 2 sprecava ovaj exception
+				System.out.println("SOCKET EXCEPTION");
 				e.printStackTrace();
 			}
 		}
@@ -75,8 +79,10 @@ public class ClientHandler extends Thread {
 			kalkulator(sign);
 
 		} catch (IOException e) {
-
-			System.out.println(e.getMessage());
+			if(e instanceof SocketException)
+				quit(2);
+			else
+				System.out.println(e.getMessage());
 		}
 
 	}
@@ -98,8 +104,10 @@ public class ClientHandler extends Thread {
 			try {
 				izbor = Integer.parseInt(porukaOdKlijenta.readLine());
 			} catch (NumberFormatException | IOException e) {
-				e.printStackTrace();
-				break;
+				if(e instanceof SocketException)
+					quit(2);
+
+				izbor = -1;
 			}
 
 			if (izbor >= 1 && izbor <= 5)
@@ -159,11 +167,17 @@ public class ClientHandler extends Thread {
 						porukaZaKlijenta.println(">>Neispravno korisnicko ime ili lozinka, pokusajte ponovo.");
 					}
 				} catch (IOException e) {
-					porukaZaKlijenta.println(">>Neispravno korisnicko ime ili lozinka, pokusajte ponovo.");
+					if(e instanceof SocketException)
+						quit(2);
+					else
+						porukaZaKlijenta.println(">>Neispravno korisnicko ime ili lozinka, pokusajte ponovo.");
 				}
 			} while (!checker);
 		} catch (IOException e) {
-			e.printStackTrace();
+			if(e instanceof SocketException)
+				quit(2);
+			else
+				e.printStackTrace();
 		}
 	}
 
@@ -209,13 +223,15 @@ public class ClientHandler extends Thread {
 			porukaZaKlijenta.println(">>Uspesno ste se registrovali!\n");
 
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			if(e instanceof SocketException)
+				quit(2);
+			else
+				e.printStackTrace();
 		}
 	}
 
 //////////////////////////////////////////////////////////////////////////////////////////	
-	private boolean checkPassword(String pw) {
+	private boolean checkPassword(String pw) throws SocketException {
 	    char ch;
 	    boolean velikoSlovo = false;
 	    boolean broj = false;
@@ -240,7 +256,12 @@ public class ClientHandler extends Thread {
 	    return false;
 	}
 //////////////////////////////////////////////////////////////////////////////////////////
-	private String postojiUsername(String u) {
+	private String postojiUsername(String u) throws SocketException {
+		if (u == null || u.length() < 3) {
+			porukaZaKlijenta.println(">>Korisnicko ime se mora sastojati od najmanje 3 karaktera!");
+			return null;
+		}
+		
 		File file = new File("Korisnici\\" + u + ".txt");
 
 		try {
@@ -250,8 +271,10 @@ public class ClientHandler extends Thread {
 				return null;
 			}
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			if(e instanceof SocketException)
+				quit(2);
+			else
+				e.printStackTrace();
 		}
 
 		return null;
@@ -259,7 +282,7 @@ public class ClientHandler extends Thread {
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
-	private void guest() {
+	private void guest() throws SocketException {
 		Random rand = new Random();
 		int n = rand.nextInt(9999999) + 1000000;
 		username = "Gost_" + n;
@@ -336,8 +359,10 @@ public class ClientHandler extends Thread {
 			try {
 				jednacina = porukaOdKlijenta.readLine();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				if(e instanceof SocketException)
+					quit(2);
+				else
+					e.printStackTrace();
 			}
 
 			while (!proveraFormataJednacine(jednacina)) {
@@ -347,8 +372,8 @@ public class ClientHandler extends Thread {
 				try {
 					jednacina = porukaOdKlijenta.readLine();
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+					if(e instanceof SocketException)
+						quit(2);				
 				}
 			}
 
@@ -375,6 +400,9 @@ public class ClientHandler extends Thread {
 				} catch (NumberFormatException e) {
 					izbor = 0;
 				} catch (IOException e) {
+					if(e instanceof SocketException)
+						quit(2);
+					
 					izbor = 0;
 				}
 				
@@ -403,7 +431,7 @@ public class ClientHandler extends Thread {
 	}
 
 //////////////////////////////////////////////////////////////////////////////////////////
-	private double izracunaj(double a, char znak, double b) {
+	private double izracunaj(double a, char znak, double b) throws SocketException {
 		switch (znak) {
 		case '+':
 			return a + b;
@@ -424,7 +452,10 @@ public class ClientHandler extends Thread {
 	}
 
 //////////////////////////////////////////////////////////////////////////////////////////
-	private boolean proveraFormataJednacine(String jed) {
+	private boolean proveraFormataJednacine(String jed) throws SocketException {
+		if(jed == null)
+			return false;
+		
 		String[] pom = jed.split(" ");
 		boolean oznakaDuzine = false;
 		boolean oznakaParsera = false;
@@ -438,17 +469,17 @@ public class ClientHandler extends Thread {
 		else {
 			return false;
 		}
-
+		
 		try {
 			br1 = Double.parseDouble(pom[0]);
 			br2 = Double.parseDouble(pom[2]);
 			znak = pom[1].charAt(0);
 
 			oznakaParsera = true;
-		} catch (Exception e) {
+		} catch (NumberFormatException e) {
 			return false;
 		}
-
+			
 		if (znak == '+' || znak == '-' || znak == '*' || znak == '/')
 			oznakaOperacije = true;
 		else
@@ -459,7 +490,7 @@ public class ClientHandler extends Thread {
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
-	private void upisiKalkulacije(String kalkulacije) {		
+	private void upisiKalkulacije(String kalkulacije) throws SocketException {		
 		String putanjaDoFajla = "Korisnici\\"+username+".txt";
 		String[] pom = kalkulacije.split("\n");
 		int d = pom.length;
@@ -481,16 +512,97 @@ public class ClientHandler extends Thread {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			if(e instanceof SocketException)
+				quit(2);
+			else
+				e.printStackTrace();
 		}		
 	}
 //////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
-	private void posaljiIzvestaj() {
-		// izmeni ime fajla u izvestaj, izbrisi sifru iz prvog reda i posalji onda, a
-		// nakon
-		// slanja vrati sve kako je bilo
+	private void posaljiIzvestaj() throws SocketException {
+		String putanjaDoFajla = pripremiFajlZaSlanje();
+		
+		if(putanjaDoFajla == null)
+			porukaZaKlijenta.println(">>Doslo je do greske prilikom pravljenja izvestaja.");
+		
 
+		try {
+			//Zato sto je txt file, mozda treba prebaciti u binary
+			File f = new File(putanjaDoFajla);
+			OutputStream strimZaSlanje = soketZaKomunikaciju.getOutputStream();		
+			
+			byte[] buffer = new byte[(int) f.length()];
+			RandomAccessFile raf = new RandomAccessFile(putanjaDoFajla, "r");
+			
+			porukaZaKlijenta.println(">>Fajl sa kalkulacijama se salje...");
+			porukaZaKlijenta.println("fileIncoming");
+			porukaZaKlijenta.println(f.length());
+			porukaZaKlijenta.println(username);
+			
+			int n = raf.read(buffer);
+			
+			System.out.println(porukaOdKlijenta.readLine()); //potvrda da je slanje prihvaceno		
+			
+			strimZaSlanje.write(buffer, 0, n);
+			
+			System.out.println(porukaOdKlijenta.readLine()); //potvrda da je fajl preuzet
+			
+			raf.close();
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		
+	}
+//////////////////////////////////////////////////////////////////////////////////////////
+	private String pripremiFajlZaSlanje() throws SocketException {
+		String putanjaDoFajla = "Korisnici\\" + username+ ".txt";
+		String tekstFajla = "";
+		String pom = null;
+		
+		try {
+			BufferedReader reader = new BufferedReader(new FileReader(putanjaDoFajla));
+			while(true) {
+				pom = reader.readLine();
+				
+				if(pom == null)
+					break;
+				
+				tekstFajla += pom + "\n";
+			}
+			reader.close();
+			
+			File file = new File("Za slanje\\" + username + ".txt");
+			file.getParentFile().mkdir();
+			file.createNewFile();
+			
+			PrintWriter	writer = new PrintWriter(new BufferedWriter(new FileWriter(file.getAbsolutePath())));
+			String[] pom2 = tekstFajla.split("\n");
+			
+			writer.println("Izvestaj o kalkulacijama za korisnika "+username+":");
+			
+			for(int i = 1; i < pom2.length; i++) // da bih preskocio red sa lozinkom
+				writer.println(pom2[i]);
+				
+			writer.close();
+			
+			return file.getAbsolutePath();
+			
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			if(e instanceof SocketException)
+				quit(2);
+			
+			e.printStackTrace();
+		}
+		
+		return null;
 	}
 }

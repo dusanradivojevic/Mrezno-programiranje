@@ -1,9 +1,14 @@
 package klijent;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.io.RandomAccessFile;
+import java.net.PortUnreachableException;
 import java.net.Socket;
 
 public class TCPKlijent{
@@ -33,6 +38,9 @@ public class TCPKlijent{
 				while(true) {
 					serverMsg = porukaOdServera.readLine();
 					
+					if(serverMsg.equals("fileIncoming"))
+						preuzmiFajl();
+					
 					if(serverMsg.startsWith(">>Dovidjenja")) {						
 						break;
 					}
@@ -60,6 +68,41 @@ public class TCPKlijent{
 		}
 		
 		
+	}
+/////////////////////////////////////////////////////////////////////////////////////////////
+	private static void preuzmiFajl() {
+		try {
+			InputStream strimZaPrijem = soketZaKomunikacijuSaServerom.getInputStream();
+			int velicinaFajla = Integer.parseInt(porukaOdServera.readLine());
+			String username = porukaOdServera.readLine();
+			
+			///
+			File file = new File("Izvestaji\\" + username + ".txt");
+			file.getParentFile().mkdir();
+			file.createNewFile();
+			///
+			
+			RandomAccessFile raf = new RandomAccessFile("Izvestaji\\"+username+".txt", "rw");
+			
+			int n = 0;
+			byte[] buffer = new byte[velicinaFajla];
+			
+			porukaZaServer.println("Spreman za prijem fajla.");
+			n = strimZaPrijem.read(buffer, 0, buffer.length);
+			raf.write(buffer, 0, n);
+			raf.close();
+			porukaZaServer.println("Fajl je primljen.");
+			
+		} catch (NumberFormatException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 }

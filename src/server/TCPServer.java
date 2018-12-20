@@ -29,7 +29,7 @@ public class TCPServer {
 				
 				SoketZaKomunikacijuSaKlijentom = SSoket.accept();
 				
-				System.out.println("Konekciju je uspostavljena!");
+				System.out.println("Konekcija je uspostavljena!");
 				System.out.println("----------------------------");
 			
 				ClientHandler klijent = new ClientHandler(SoketZaKomunikacijuSaKlijentom);
@@ -49,7 +49,7 @@ public class TCPServer {
 		file.getParentFile().mkdir();
 		try {
 			file.createNewFile();
-			System.out.println(file.getAbsolutePath());
+//			System.out.println(file.getAbsolutePath());
 		} catch (Exception e) {
 			System.out.println("Iskocilo nesto u setUpServer");
 		}
