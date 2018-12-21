@@ -15,14 +15,9 @@ import java.io.RandomAccessFile;
 import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.net.SocketException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Random;
-
-/*
- * hvatanje iznenadnih prekida konekcije
- * 
- * slanje kalkulacije (izmenjenog fajla (bez sifre i username i promenjeno ime fajla))
- *  
- */
 
 public class ClientHandler extends Thread {
 
@@ -32,7 +27,6 @@ public class ClientHandler extends Thread {
 	public String username;
 	public String password;
 	public int sign = -1; // vrsta korisnika
-	public String zahtevi; // svi zahtevi koje je korisnik uputio, sluzi za kasnije cuvanje u fajl
 
 	public ClientHandler(Socket soketZaKomunikaciju) {
 		this.soketZaKomunikaciju = soketZaKomunikaciju;
@@ -46,8 +40,6 @@ public class ClientHandler extends Thread {
 			komuniciraj();
 
 		} catch (SocketException se) {
-			System.out.println("UHVACEN SOCKET EXCEPTION");
-
 			try {
 				quit(2);
 			} catch (SocketException e) {
@@ -63,11 +55,6 @@ public class ClientHandler extends Thread {
 		try {
 			porukaOdKlijenta = new BufferedReader(new InputStreamReader(soketZaKomunikaciju.getInputStream()));
 			porukaZaKlijenta = new PrintStream(soketZaKomunikaciju.getOutputStream());
-
-			/*
-			 * try { TimeUnit.SECONDS.sleep(5); } catch (InterruptedException e) { // TODO
-			 * Auto-generated catch block e.printStackTrace(); }
-			 */
 
 			porukaZaKlijenta.println(">>Dobrodosli, uspesno ste se povezali na server!");
 //			porukaZaKlijenta.println("%%%");  // oznaka da klijent prestane sa slusanjem
@@ -120,7 +107,7 @@ public class ClientHandler extends Thread {
 		} while (!provera);
 
 		if (sign == -1)
-			sign = izbor; // proveri da ne sme da dobije sign ako se neuspesno loguje
+			sign = izbor; 
 
 		switch (izbor) {
 		case 1:
@@ -172,6 +159,25 @@ public class ClientHandler extends Thread {
 					else
 						porukaZaKlijenta.println(">>Neispravno korisnicko ime ili lozinka, pokusajte ponovo.");
 				}
+				
+				int izbor = 0;
+				if(!checker) {
+					porukaZaKlijenta.println(">>Ako zelite da se registrujete unesite 1.");
+					porukaZaKlijenta.println(">>Za ponovni pokusaj unesite bilo sta drugo, za izlaz *quit .");
+					porukaZaKlijenta.println("%%%");
+					
+					try {
+						izbor = Integer.parseInt(porukaOdKlijenta.readLine());
+					} catch (NumberFormatException e) {	
+						
+					}					
+				}
+				
+				if(izbor == 1) {
+					registration();
+					return;
+				}
+				
 			} while (!checker);
 		} catch (IOException e) {
 			if(e instanceof SocketException)
@@ -186,6 +192,7 @@ public class ClientHandler extends Thread {
 	private void registration() throws SocketException {
 		String putanjaDoFajla = null;
 		try {
+			boolean checker = false;
 			do {
 				porukaZaKlijenta.println(">>Unesite vase korisnicko ime:");
 				porukaZaKlijenta.println("%%%");
@@ -195,13 +202,9 @@ public class ClientHandler extends Thread {
 
 				if (putanjaDoFajla == null) {
 					porukaZaKlijenta.println(">>Postoji korisnik sa tim korisnickim imenom! Pokusajte ponovo.");
-				} else
-					break;
-
-			} while (true);
-
-			boolean checker = false;
-			do {
+					continue;
+				}
+			
 				porukaZaKlijenta.println(
 						">>Unesite vasu lozinku:\n>>Napomena:" + " lozinka se mora sastojati iz minimum 8 karaktera, "
 								+ "minimum jednog velikog slova" + "(A-Z) i minimum jednog broja (0-9)");
@@ -236,7 +239,7 @@ public class ClientHandler extends Thread {
 	    boolean velikoSlovo = false;
 	    boolean broj = false;
 	    
-	    if (pw.length() <= 8)
+	    if (pw.length() < 8)
 	    	return false;
 	    
 	    for(int i=0; i < pw.length(); i++) {
@@ -294,21 +297,17 @@ public class ClientHandler extends Thread {
 		
 		if (exitCode == 2) {
 			try {
-				// dodaj posaljiIzvestaj() da bi se sacuvao poslednji zahtev
-				// to takodje uradi svuda gde moze da dodje do gubljenja podataka
-				// (eventualno stavi samo gde hvatas socketexception)
+				
 				soketZaKomunikaciju.close();
 
 			} catch (IOException e) {
 				System.out.println("Greska u funckiji quit() pri zatvaranju soketa za komunikaciju sa klijentom.");
-				e.printStackTrace();
 			}
 
 			return;
 		}
 
 		porukaZaKlijenta.println(">>Dovidjenja " + username + "!");
-//		System.out.println("Napisao dovidjenja");
 
 		try {
 			soketZaKomunikaciju.close();
@@ -347,7 +346,7 @@ public class ClientHandler extends Thread {
 		while (true) {
 			if (iterator == ogranicenje) {
 				porukaZaKlijenta.println(">>Kao gost nemate pravo na dodatne kalkulacije.");
-				break; // i/ili drugi nacin prekida
+				break;
 			}
 
 			if (iterator != 0 && sign == 3) {
@@ -387,7 +386,10 @@ public class ClientHandler extends Thread {
 			
 			porukaZaKlijenta.println(">>Rezultat je: " + rezultat);
 			
-			kalkulacije += "\n" + br1 + " " + znak + " " + br2 + " = " + rezultat;
+			Date datum = new Date();
+			String vreme = new SimpleDateFormat("HH:mm:ss").format(datum);
+			
+			kalkulacije += "\n" + vreme + " " + br1 + " " + znak + " " + br2 + " = " + rezultat;
 			
 			while(true) {
 				porukaZaKlijenta.println(">>Za novu kalkulaciju unesite 1,\n"
@@ -417,7 +419,7 @@ public class ClientHandler extends Thread {
 			
 			if (izbor == 2 && sign != 3) {
 				upisiKalkulacije(kalkulacije);
-				posaljiIzvestaj(); //dodaj String kalkulacije
+				posaljiIzvestaj(); 
 				break;
 			} else if (izbor != 1)
 				break;			
@@ -526,9 +528,7 @@ public class ClientHandler extends Thread {
 		if(putanjaDoFajla == null)
 			porukaZaKlijenta.println(">>Doslo je do greske prilikom pravljenja izvestaja.");
 		
-
 		try {
-			//Zato sto je txt file, mozda treba prebaciti u binary
 			File f = new File(putanjaDoFajla);
 			OutputStream strimZaSlanje = soketZaKomunikaciju.getOutputStream();		
 			
@@ -536,7 +536,6 @@ public class ClientHandler extends Thread {
 			RandomAccessFile raf = new RandomAccessFile(putanjaDoFajla, "r");
 			
 			porukaZaKlijenta.println(">>Fajl sa kalkulacijama se salje...");
-			porukaZaKlijenta.println("fileIncoming");
 			porukaZaKlijenta.println(f.length());
 			porukaZaKlijenta.println(username);
 			
@@ -548,6 +547,8 @@ public class ClientHandler extends Thread {
 			
 			System.out.println(porukaOdKlijenta.readLine()); //potvrda da je fajl preuzet
 			
+			porukaZaKlijenta.println(">>Fajl je uspesno poslat!");
+			
 			raf.close();
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
@@ -555,15 +556,15 @@ public class ClientHandler extends Thread {
 		} catch (IOException e) {
 			if (e instanceof SocketException)
 				quit(2);
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			else
+				e.printStackTrace();
 		}
 
 		
 	}
 //////////////////////////////////////////////////////////////////////////////////////////
 	private String pripremiFajlZaSlanje() throws SocketException {
-		String putanjaDoFajla = "Korisnici\\" + username+ ".txt";
+		String putanjaDoFajla = "Korisnici\\" + username + ".txt";
 		String tekstFajla = "";
 		String pom = null;
 		

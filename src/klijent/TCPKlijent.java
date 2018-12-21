@@ -2,15 +2,11 @@ package klijent;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.RandomAccessFile;
-import java.net.PortUnreachableException;
 import java.net.Socket;
-import java.net.SocketException;
 
 public class TCPKlijent{
 
@@ -23,8 +19,18 @@ public class TCPKlijent{
 		
 		try {
 			int port = 1755;
-			soketZaKomunikacijuSaServerom = new Socket("localhost", port); //dodaj 3 pokusaja konekcije sa serverom
+			String ip = "127.0.0.1"; // "localhost"
 			
+			System.out.println("Konektujem se na server..");
+			for(int i = 0; i < 3; i++) {
+				try {
+					soketZaKomunikacijuSaServerom = new Socket(ip, port);
+					break;
+				} catch (Exception e) {
+					System.out.println("Neuspesna konekcija broj "+ (i+1) + ". Pokusavam ponovo..");
+				} 
+			}
+				
 			porukaOdServera = new BufferedReader(new InputStreamReader(soketZaKomunikacijuSaServerom.getInputStream()));
 			porukaZaServer = new PrintStream(soketZaKomunikacijuSaServerom.getOutputStream());
 			unosSaTastature = new BufferedReader(new InputStreamReader(System.in));
@@ -39,10 +45,13 @@ public class TCPKlijent{
 				while(true) {
 					serverMsg = porukaOdServera.readLine();
 					
-					if(serverMsg.equals("fileIncoming"))
+					if(serverMsg.equals(">>Fajl sa kalkulacijama se salje...")) {
 						preuzmiFajl();
+//						break;
+					}
 					
-					if(serverMsg.startsWith(">>Dovidjenja")) {						
+					if(serverMsg.startsWith(">>Dovidjenja")) {	
+						System.out.println(serverMsg);
 						break;
 					}
 					
@@ -52,7 +61,7 @@ public class TCPKlijent{
 					System.out.println(serverMsg);
 				}		
 				
-				if(serverMsg.startsWith(">>Dovidjenja")) {
+				if(serverMsg.startsWith(">>Dovidjenja") || serverMsg.equals("fileIncoming")) {
 					break;
 				}
 				
@@ -71,29 +80,31 @@ public class TCPKlijent{
 		
 	}
 /////////////////////////////////////////////////////////////////////////////////////////////
-	private static void preuzmiFajl() {
+	private static void preuzmiFajl()  {
 		try {
 			InputStream strimZaPrijem = soketZaKomunikacijuSaServerom.getInputStream();
 			int velicinaFajla = Integer.parseInt(porukaOdServera.readLine());
 			String username = porukaOdServera.readLine();
-			
+						
 			///
 			File file = new File("Izvestaji\\" + username + ".txt");
 			file.getParentFile().mkdir();
 			file.createNewFile();
 			///
 			
-			RandomAccessFile raf = new RandomAccessFile("Izvestaji\\"+username+".txt", "rw");
+			RandomAccessFile raf = new RandomAccessFile("Izvestaji\\" + username + ".txt", "rw");
 			
 			int n = 0;
 			byte[] buffer = new byte[velicinaFajla];
 			
-			porukaZaServer.println("Spreman za prijem fajla.");
+			porukaZaServer.println("\nKlijent je spreman za prijem fajla.");
+			
 			n = strimZaPrijem.read(buffer, 0, buffer.length);
 			raf.write(buffer, 0, n);
-			raf.close();
-			porukaZaServer.println("Fajl je primljen.");
 			
+//			porukaZaServer.println("Klijent je primio fajl.");
+			
+			raf.close();			
 		} catch (Exception e) {
 			System.out.println("Doslo je do greske pri konekciji sa serverom!");
 		}
