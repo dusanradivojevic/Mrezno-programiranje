@@ -1,11 +1,12 @@
-# Mrezno-programiranje
-Klijent - server kalkulator
+# Network programming
+Client - server calculator
 
-## Opis
+## Description
 <ul>
-<li>Aplikacija sadrzi server koji moze da vrsi kalkulacije na osnovu njihovih zahteva. </li>
-<li>Korisnik moze da se registruje, prijavi ili koristi kalkulator kao gost. </li>
-<li>Kalkulator pamti korisnicko ime i sifru svakog korisnika kao i njegove kalkulacije.</li>
-<li>Postoji mogucnost slanja podataka o kalkulacijama u vidu tekstualnog fajla putem mreze.</li>
-<li>Aplikacija je uradjena bez grafickog interfejsa u Java programskom jeziku.</li>
+  <li>Aplication is divided on server and client side.</li>
+  <li>Server performs calculations based on client requests.</li>
+  <li>User can register, login or use calculator as a guest.</li>
+  <li>Calculator saves username and password with all calculations for each user.</li>
+  <li>Application provides the ability to send calculation data over the network in form of a text file.</li>
+  <li>Application is implemented in Java programming language without graphical user interface.</li>
 </ul>
